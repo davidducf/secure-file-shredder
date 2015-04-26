@@ -2,6 +2,7 @@
 
 # David Demianovich, Ross Cooper, David Londono
 # UCF CIS 4361 - Spring 2015
+# secure file shredder / integrity checker
 
 $option = shift();
 
