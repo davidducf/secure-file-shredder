@@ -26,7 +26,7 @@ if ($option eq "-d"){ print "-d\n"; dirCompute();}
 sub dirCompute {
 	my $dirname = $file;
 
-	my $filename = "testdir/test1";
+	my $filename = "testdir/test1.txt";
 	open (my $fh, '<', $filename) or die "cannot open '$filename': $!";
 	binmode($fh);
 	$md5 = Digest::MD5->new;
