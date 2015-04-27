@@ -35,8 +35,12 @@ sub dirCompute {
 	
 	# begin interating through each file in directory	
 	while(readdir $dh) {		
+			
+		# skip '.' and '..' directories
+		if($_ eq '.' || $_ eq '..') { next; }	
+		
 		my $filename = "$dirname/$_";
-		print "FIle NAME: $filename\n";
+		
 		# open file and compute md5
 		open (my $fh, '<', $filename) or die "cannot open '$filename': $!";
 		binmode($fh);
