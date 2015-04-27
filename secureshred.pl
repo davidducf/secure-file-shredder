@@ -25,16 +25,42 @@ if ($option eq "-d"){ print "-d\n"; dirCompute();}
 # compute hashes on all files inside provided directory (-d option)
 sub dirCompute {
 	my $dirname = $file;
-
-	my $filename = "testdir/test1";
-	open (my $fh, '<', $filename) or die "cannot open '$filename': $!";
-	binmode($fh);
-	$md5 = Digest::MD5->new;
+	my $hash = 0;	
+	
+	# open database
+	dbmopen(%MD5, "md5db", 0666);	
+		
+	# open directory provided by user
+	opendir(my $dh, $dirname) || die "cannot opendir $dirname: $!";
+	
+	# begin interating through each file in directory	
+	while(readdir $dh) {		
+		my $filename = "$dirname/$_";
+		print "FIle NAME: $filename\n";
+		# open file and compute md5
+		open (my $fh, '<', $filename) or die "cannot open '$filename': $!";
+		binmode($fh);
+		$md5 = Digest::MD5->new;
 		while(<$fh>) {
 			$md5->add($_);
 		}
-	close($fh);
-	print $md5->hexdigest, " $filename\n";
+		close($fh);
+		my $hash = $md5->hexdigest;	
+		print "$hash $filename\n";
+		
+		# add filepath and md5 to database 
+		$MD5{$filename} = $hash;
+		
+	}
+	
+	# iterate through md5 database (for testing purposes)	
+	while (($key,$val) = each %MD5) {
+			print $key, ' = ', unpack('a32',$val), "\n"; 
+		}
+
+	# close directory and dbm handlers	
+	closedir $dh;	
+	dbmclose(%MD5);
 }
 
 
