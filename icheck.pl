@@ -13,7 +13,10 @@ our $file = shift();  # placeholder for second command line arguement, may be fi
 our $OS = $^O;  # determine operating system
 our %MD5; # declare global hash for md5 storage
 
-our $filepath = abs_path($file); # get full path to file or directory arguement
+# only get full path is second arguement is provided, 'if ($file)' test whether or not $file was defined 
+if($file) {
+	our $filepath = abs_path($file); # get full path to file or directory arguement
+}
 
 if ($option eq "-d"){ dirCompute();}
 	elsif($option eq "-f"){ md5Calc();}
@@ -47,6 +50,8 @@ sub dirCompute {
 		my $filename = "$filepath/$_";  
 		
 		# open file and compute md5
+		# skip subdirectories (testing with -d)
+		if(-d $filename) { next;}
 		open (my $fh, '<', $filename) or die "cannot open '$filename': $!";
 		binmode($fh);
 		$md5 = Digest::MD5->new;
@@ -134,10 +139,11 @@ sub testMd5 {
 			close($fh);
 			my $hash = $md5->hexdigest;	
 			
+			print "File: $key\ncomputed hash: $hash\nstored hash:   $MD5{$key}\n";
 			# test is newly computed hash equals what is stored in dbm
 			if($hash eq $MD5{$key}) {
 				print "$key: validity check PASS\n";
-			} else { print "validity check FAIL\n";}
+			} else { print "$key: validity check FAIL\n";}
 	}
 	
 }
