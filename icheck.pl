@@ -3,7 +3,6 @@
 # David Demianovich, Ross Cooper, David Londono
 # UCF CIS 4361 - Spring 2015
 # secure file shredder / integrity checker
-# Test Comment for Pull attempt at 5pm 4-28
 
 use Digest::MD5 qw(md5 md5_hex md5_base64);
 use Cwd 'abs_path';
