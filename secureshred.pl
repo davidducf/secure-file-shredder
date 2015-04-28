@@ -11,7 +11,7 @@ our $file = shift();  # placeholder for second command line arguement, may be fi
 our $OS = $^O;  # determine operating system
 
 if ($option eq "-d"){ print "-d\n"; dirCompute();}
-	elsif($option eq "-f"){ print "-f\n";}
+	elsif($option eq "-f"){ print "-f\n"; md5calc();}
 	elsif($option eq "-t") { print "-t\n";}
 	elsif($option eq "-r") { print "-r\n"}
 	elsif($option eq "-s") { print "-s\n"}
@@ -66,6 +66,23 @@ sub dirCompute {
 	closedir $dh;	
 	dbmclose(%MD5);
 }
+
+
+# function to read specific file and compute its md5 (-f option)
+sub md5calc {
+	
+	open (my $fh, '<', $file) or die "cannot open '$file': $!";
+		binmode($fh);
+		$md5 = Digest::MD5->new;
+		while(<$fh>) {
+			$md5->add($_);
+		}
+		close($fh);
+		my $hash = $md5->hexdigest;	
+		print "MD5 for $file: $hash\n";
+	
+}
+
 
 
 
