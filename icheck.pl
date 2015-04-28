@@ -5,16 +5,19 @@
 # secure file shredder / integrity checker
 
 use Digest::MD5 qw(md5 md5_hex md5_base64);
+use Cwd 'abs_path';
 
 our $option = shift();
 our $file = shift();  # placeholder for second command line arguement, may be file or directory
 our $OS = $^O;  # determine operating system
 our %MD5; # declare global hash for md5 storage
 
-if ($option eq "-d"){ print "-d\n"; dirCompute();}
-	elsif($option eq "-f"){ print "-f\n"; md5Calc();}
+our $filepath = abs_path($file); # get full path to file or directory arguement
+
+if ($option eq "-d"){ dirCompute();}
+	elsif($option eq "-f"){ md5Calc();}
 	elsif($option eq "-t") { print "-t\n";}
-	elsif($option eq "-r") { print "-r\n"; removeMd5();}
+	elsif($option eq "-r") { removeMd5();}
 	elsif($option eq "-s") { print "-s\n"}
 	elsif($option eq "-h") { prhelp(); }
 	else { 
@@ -25,14 +28,14 @@ if ($option eq "-d"){ print "-d\n"; dirCompute();}
 
 # compute hashes on all files inside provided directory (-d option)
 sub dirCompute {
-	my $dirname = $file;
+	
 	my $hash = 0;	
 	
 	# open database
 	dbmopen(%MD5, "md5db", 0666);	
 		
 	# open directory provided by user
-	opendir(my $dh, $dirname) || die "cannot opendir $dirname: $!";
+	opendir(my $dh, $filepath) || die "cannot opendir $filepath: $!"; ## CHANGED PATH TESTING
 	
 	# begin interating through each file in directory	
 	while(readdir $dh) {		
@@ -40,7 +43,7 @@ sub dirCompute {
 		# skip '.' and '..' directories
 		if($_ eq '.' || $_ eq '..') { next; }	
 		
-		my $filename = "$dirname/$_";
+		my $filename = "$filepath/$_";  
 		
 		# open file and compute md5
 		open (my $fh, '<', $filename) or die "cannot open '$filename': $!";
@@ -51,7 +54,7 @@ sub dirCompute {
 		}
 		close($fh);
 		my $hash = $md5->hexdigest;	
-		print "$hash $filename\n";
+		# print "$hash $filename\n";
 		
 		# add filepath and md5 to database 
 		$MD5{$filename} = $hash;
@@ -72,7 +75,7 @@ sub dirCompute {
 # function to read specific file and compute its md5 (-f option)
 sub md5Calc {
 	
-	open (my $fh, '<', $file) or die "cannot open '$file': $!";
+	open (my $fh, '<', $filepath) or die "cannot open '$file': $!";
 		binmode($fh);
 		$md5 = Digest::MD5->new;
 		while(<$fh>) {
@@ -80,33 +83,35 @@ sub md5Calc {
 		}
 		close($fh);
 		my $hash = $md5->hexdigest;	
-		print "MD5 for $file: $hash\n";
+		print "MD5 for $filepath: $hash\n";
 	
 }
 
 # function to remove a file from the recorded md5 database
 sub removeMd5 {
-
-	print "im inside removeMD5\n";
 	
+	my $isDeleted = 0; # boolean to track if entry is found in hash database
 	dbmopen(%MD5, "md5db", 0666);
 		foreach $key (keys %MD5) {
-			if($key eq $file) {
+
+			# may not need to loop, just try to delete $MD5{$key} and die and error if not found			
+			if($key eq $filepath) {
 				delete $MD5{$key};
-				print "Entry for $file deleted from database.\n";	
+				print "Entry for $file deleted from database.\n";
+				$isDeleted++;	
 			} 
 	}
+	
+	if ($isDeleted == 0)	{ print "Entry for $file not found\n"; exit;}
 	
 	print "Changes reflected below:\n";
 	# iterate through md5 database (for testing purposes)	
 	while (($key,$val) = each %MD5) {
-			print $key, ' = ', unpack('a32',$val), "\n"; 
+			print $key, ' = ', unpack('a32',$val), "\n"; # a32 = 32 character string, binary
 	}	
 
 	dbmclose(%MD5);
 }
-
-
 
 
 # function to print help menu
