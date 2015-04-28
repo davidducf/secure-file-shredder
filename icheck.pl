@@ -16,7 +16,7 @@ our $filepath = abs_path($file); # get full path to file or directory arguement
 
 if ($option eq "-d"){ dirCompute();}
 	elsif($option eq "-f"){ md5Calc();}
-	elsif($option eq "-t") { print "-t\n";}
+	elsif($option eq "-t") { testMd5();}  
 	elsif($option eq "-r") { removeMd5();}
 	elsif($option eq "-s") { print "-s\n"}
 	elsif($option eq "-h") { prhelp(); }
@@ -100,7 +100,7 @@ sub removeMd5 {
 				print "Entry for $file deleted from database.\n";
 				$isDeleted++;	
 			} 
-	}
+		}
 	
 	if ($isDeleted == 0)	{ print "Entry for $file not found\n"; exit;}
 	
@@ -111,6 +111,34 @@ sub removeMd5 {
 	}	
 
 	dbmclose(%MD5);
+}
+
+# test the validity of the stored md5s (-t option)
+sub testMd5 {
+	
+	my $md5sum = 0; # placeholder for computed md5, used for comparison with stored md5
+	
+	dbmopen(%MD5, "md5db", 0666);
+	
+	# iterate through dbm file
+	foreach $key (keys %MD5) {
+		
+		# compute hash for each file (denoted by $key)
+		open (my $fh, '<', $key) or die "cannot open '$key': $!";
+			binmode($fh);
+			$md5 = Digest::MD5->new;
+			while(<$fh>) {
+				$md5->add($_);
+			}
+			close($fh);
+			my $hash = $md5->hexdigest;	
+			
+			# test is newly computed hash equals what is stored in dbm
+			if($hash eq $MD5{$key}) {
+				print "$key: validity check PASS\n";
+			} else { print "validity check FAIL\n";}
+	}
+	
 }
 
 
