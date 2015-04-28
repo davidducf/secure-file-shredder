@@ -11,10 +11,10 @@ our $file = shift();  # placeholder for second command line arguement, may be fi
 our $OS = $^O;  # determine operating system
 our %MD5; # declare global hash for md5 storage
 
-if ($option eq "-d"){ print "-d\n"; dirCompute();}
-	elsif($option eq "-f"){ print "-f\n"; md5Calc();}
+if ($option eq "-d"){ dirCompute();}
+	elsif($option eq "-f"){ md5Calc();}
 	elsif($option eq "-t") { print "-t\n";}
-	elsif($option eq "-r") { print "-r\n"; removeMd5();}
+	elsif($option eq "-r") { removeMd5();}
 	elsif($option eq "-s") { print "-s\n"}
 	elsif($option eq "-h") { prhelp(); }
 	else { 
@@ -86,16 +86,20 @@ sub md5Calc {
 
 # function to remove a file from the recorded md5 database
 sub removeMd5 {
-
-	print "im inside removeMD5\n";
 	
+	my $isDeleted = 0; # boolean to track if entry is found in hash database
 	dbmopen(%MD5, "md5db", 0666);
 		foreach $key (keys %MD5) {
+
+			# may not need to loop, just try to delete $MD5{$key} and die and error if not found			
 			if($key eq $file) {
 				delete $MD5{$key};
-				print "Entry for $file deleted from database.\n";	
+				print "Entry for $file deleted from database.\n";
+				$isDeleted++;	
 			} 
 	}
+	
+	if ($isDeleted == 0)	{ print "Entry for $file not found\n"; exit;}
 	
 	print "Changes reflected below:\n";
 	# iterate through md5 database (for testing purposes)	
@@ -105,8 +109,6 @@ sub removeMd5 {
 
 	dbmclose(%MD5);
 }
-
-
 
 
 # function to print help menu
