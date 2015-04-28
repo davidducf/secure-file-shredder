@@ -145,7 +145,7 @@ sub testMd5 {
 				print "$key: validity check PASS\n";
 			} else { print "$key: validity check FAIL\n";}
 	}
-	
+	dbmclose(%MD5);
 }
 
 
