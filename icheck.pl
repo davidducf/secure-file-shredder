@@ -1,0 +1,191 @@
+#! /usr/bin/perl
+
+# Authors: David Demianovich, Ross Cooper, David Londono
+# Class: UCF CIS 4361
+# Semester: Spring 2015
+# Purpose: secure file shredder / integrity checker
+
+
+use Digest::MD5 qw(md5 md5_hex md5_base64);
+use Cwd 'abs_path';
+
+our $option = shift();
+our $file = shift();  # placeholder for second command line arguement, may be file or directory
+our $OS = $^O;  # determine operating system
+our %MD5; # declare global hash for md5 storage
+
+# only get full path is second arguement is provided, 'if ($file)' test whether or not $file was defined 
+if($file) {
+	our $filepath = abs_path($file); # get full path to file or directory arguement
+}
+
+if ($option eq "-d"){ dirCompute();}
+	elsif($option eq "-f"){ md5Calc();}
+	elsif($option eq "-t") { testMd5();}  
+	elsif($option eq "-r") { removeMd5();}
+	elsif($option eq "-s") { shredFile(); }
+	elsif($option eq "-h") { prhelp(); }
+	else { 
+		print "unrecognized command. please try again. use the flag '-h' to display the help menu.\n";
+		exit;
+	}
+
+
+# compute hashes on all files inside provided directory (-d option)
+sub dirCompute {
+	
+	my $hash = 0;	
+	
+	# open database
+	dbmopen(%MD5, "md5db", 0666);	
+		
+	# open directory provided by user
+	opendir(my $dh, $filepath) || die "cannot opendir $filepath: $!"; ## CHANGED PATH TESTING
+	
+	# begin interating through each file in directory	
+	while(readdir $dh) {		
+			
+		# skip '.' and '..' directories
+		if($_ eq '.' || $_ eq '..') { next; }	
+		
+		my $filename = "$filepath/$_";  
+		
+		# open file and compute md5
+		# skip subdirectories (testing with -d)
+		if(-d $filename) { next;}
+		open (my $fh, '<', $filename) or die "cannot open '$filename': $!";
+		binmode($fh);
+		$md5 = Digest::MD5->new;
+		while(<$fh>) {
+			$md5->add($_);
+		}
+		close($fh);
+		my $hash = $md5->hexdigest;	
+		# print "$hash $filename\n";
+		
+		# add filepath and md5 to database 
+		$MD5{$filename} = $hash;
+		
+	}
+	
+	# iterate through md5 database (for testing purposes)	
+	while (($key,$val) = each %MD5) {
+			print $key, ' = ', unpack('a32',$val), "\n"; 
+		}
+
+	# close directory and dbm handlers	
+	closedir $dh;	
+	dbmclose(%MD5);
+}
+
+
+# function to read specific file and compute its md5 (-f option)
+sub md5Calc {
+	
+	open (my $fh, '<', $filepath) or die "cannot open '$file': $!";
+	binmode($fh);
+	$md5 = Digest::MD5->new;
+	while(<$fh>) {
+		$md5->add($_);
+	}
+	close($fh);
+	my $hash = $md5->hexdigest;	
+	print "MD5 for $filepath: $hash\n";
+
+}
+
+# function to remove a file from the recorded md5 database
+sub removeMd5 {
+	
+	my $isDeleted = 0; # boolean to track if entry is found in hash database
+	dbmopen(%MD5, "md5db", 0666);
+		foreach $key (keys %MD5) {
+
+			# may not need to loop, just try to delete $MD5{$key} and die and error if not found			
+			if($key eq $filepath) {
+				delete $MD5{$key};
+				print "Entry for $file deleted from database.\n";
+				$isDeleted++;	
+			} 
+		}
+	
+	if ($isDeleted == 0)	{ print "Entry for $file not found\n"; exit;}
+	
+	print "Changes reflected below:\n";
+	# iterate through md5 database (for testing purposes)	
+	while (($key,$val) = each %MD5) {
+			print $key, ' = ', unpack('a32',$val), "\n"; # a32 = 32 character string, binary
+	}	
+
+	dbmclose(%MD5);
+}
+
+
+# test the validity of the stored md5s (-t option)
+sub testMd5 {
+	
+	my $md5sum = 0; # placeholder for computed md5, used for comparison with stored md5
+	
+	dbmopen(%MD5, "md5db", 0666);
+	
+	# iterate through dbm file
+	foreach $key (keys %MD5) {
+		
+		# compute hash for each file (denoted by $key)
+		open (my $fh, '<', $key) or die "cannot open '$key': $!";
+			binmode($fh);
+			$md5 = Digest::MD5->new;
+			while(<$fh>) {
+				$md5->add($_);
+			}
+			close($fh);
+			my $hash = $md5->hexdigest;	
+			
+			print "File: $key\ncomputed hash: $hash\nstored hash:   $MD5{$key}\n";
+			# test is newly computed hash equals what is stored in dbm
+			if($hash eq $MD5{$key}) {
+				print "$key: validity check PASS\n";
+			} else { print "$key: validity check FAIL\n";}
+	}
+	dbmclose(%MD5);
+}
+
+#function to securely delete / shred a file
+#Writes random numbers to the file before deleting it at the filesystem level
+sub shredFile {
+	
+	#Open the file in binary mode
+	open (my $fh, '+<', $filepath) or die "cannot open '$file': $!";
+	binmode($fh);
+	
+	#Until the end of the file is reached, write a single digit random number
+	until( eof($fh) ) {
+		#Generate a random number between 0-9
+		$randomNumber = int(rand(10));
+		
+		#Print the random number to the file
+		print $fh $randomNumber;
+	}
+	
+	#Close the file object
+	close $fh;
+	
+	#Unlink the file at the filepath or throw an error.
+	unlink $filepath or die "Failed to unlink '$file' : $!";
+	
+	print "$file shredded successfully.\n";
+}
+
+
+# function to print help menu
+sub prhelp {
+	print <<HELP;
+	Usage:
+	-d <directory>: reads the list of files in the directory and computes the md5 for each one
+	-f <file>: reads a specific file and computes its md5
+	-t <file>: tests integrity for the files with the recorded md5s
+	-r <file>: removes a file from the recorded md5 database
+	-s <file>: securely shred a file in the system
+
+HELP
+}
