@@ -18,7 +18,7 @@ if ($option eq "-d"){ dirCompute();}
 	elsif($option eq "-f"){ md5Calc();}
 	elsif($option eq "-t") { print "-t\n";}
 	elsif($option eq "-r") { removeMd5();}
-	elsif($option eq "-s") { print "-s\n"}
+	elsif($option eq "-s") { shredFile(); }
 	elsif($option eq "-h") { prhelp(); }
 	else { 
 		print "unrecognized command. please try again. use the flag '-h' to display the help menu.\n";
@@ -76,15 +76,15 @@ sub dirCompute {
 sub md5Calc {
 	
 	open (my $fh, '<', $filepath) or die "cannot open '$file': $!";
-		binmode($fh);
-		$md5 = Digest::MD5->new;
-		while(<$fh>) {
-			$md5->add($_);
-		}
-		close($fh);
-		my $hash = $md5->hexdigest;	
-		print "MD5 for $filepath: $hash\n";
-	
+	binmode($fh);
+	$md5 = Digest::MD5->new;
+	while(<$fh>) {
+		$md5->add($_);
+	}
+	close($fh);
+	my $hash = $md5->hexdigest;	
+	print "MD5 for $filepath: $hash\n";
+
 }
 
 # function to remove a file from the recorded md5 database
@@ -111,6 +111,31 @@ sub removeMd5 {
 	}	
 
 	dbmclose(%MD5);
+}
+
+#function to securely delete / shred a file
+#Writes random numbers to the file before deleting it at the filesystem level
+sub shredFile {
+	
+	#Open the file in binary mode
+	open (my $fh, '+<', $filepath) or die "cannot open '$file': $!";
+	binmode($fh);
+	
+	#Until the end of the file is reached, write a single digit random number
+	until( eof($fh) ) {
+		#Generate a random number between 0-9
+		$randomNumber = int(rand(10));
+		
+		#Print the random number to the file
+		print $fh $randomNumber;
+	}
+	
+	#Close the file object
+	close $fh;
+	
+	#Unlink the file at the filepath or throw an error.
+	unlink $filepath or die "Failed to unlink '$file' : $!";
+	
 }
 
 
