@@ -148,6 +148,7 @@ sub testMd5 {
 			} else { print "$key: validity check FAIL\n";}
 	}
 	dbmclose(%MD5);
+}
 
 #function to securely delete / shred a file
 #Writes random numbers to the file before deleting it at the filesystem level
@@ -172,7 +173,7 @@ sub shredFile {
 	#Unlink the file at the filepath or throw an error.
 	unlink $filepath or die "Failed to unlink '$file' : $!";
 	
-
+	print "$file shredded successfully.\n";
 }
 
 
